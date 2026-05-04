@@ -104,8 +104,8 @@ echo ""
 # =============================================================================
 info "Installing system dependencies..."
 
-sudo apt-get update -qq
-sudo apt-get install -y -qq \
+apt-get update -qq
+apt-get install -y -qq \
   curl \
   git \
   ca-certificates \
@@ -124,7 +124,7 @@ info "Checking Docker..."
 if ! command -v docker &>/dev/null; then
   info "Docker not found — installing..."
   curl -fsSL https://get.docker.com | sh
-  sudo usermod -aG docker "$USER"
+  echo "Running as root, skipping docker group setup"
   log "Docker installed — NOTE: you may need to log out and back in for group changes"
   # Activate group in current session
   newgrp docker << 'DOCKERGROUP'
@@ -136,8 +136,8 @@ fi
 # Verify Docker is running
 if ! docker info &>/dev/null; then
   info "Starting Docker daemon..."
-  sudo systemctl start docker
-  sudo systemctl enable docker
+  systemctl start docker
+  systemctl enable docker
 fi
 log "Docker daemon is running ✓"
 
@@ -148,14 +148,14 @@ info "Installing NVIDIA Container Toolkit..."
 
 if ! dpkg -l | grep -q nvidia-container-toolkit; then
   curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-    sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
   curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-  sudo apt-get update -qq
-  sudo apt-get install -y -qq nvidia-container-toolkit
-  sudo nvidia-ctk runtime configure --runtime=docker
-  sudo systemctl restart docker
+    tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+  apt-get update -qq
+  apt-get install -y -qq nvidia-container-toolkit
+  nvidia-ctk runtime configure --runtime=docker
+  systemctl restart docker
   log "NVIDIA Container Toolkit installed and configured"
 else
   log "NVIDIA Container Toolkit already installed ✓"
@@ -176,15 +176,15 @@ fi
 # Ensure Ollama is running and binding to all interfaces
 # (NemoClaw sandbox needs to reach it through Docker networking)
 info "Configuring Ollama to bind to 0.0.0.0 for Docker access..."
-sudo mkdir -p /etc/systemd/system/ollama.service.d
-sudo tee /etc/systemd/system/ollama.service.d/override.conf > /dev/null << 'EOF'
+mkdir -p /etc/systemd/system/ollama.service.d
+tee /etc/systemd/system/ollama.service.d/override.conf > /dev/null << 'EOF'
 [Service]
 Environment="OLLAMA_HOST=0.0.0.0"
 EOF
 
-sudo systemctl daemon-reload
-sudo systemctl enable ollama
-sudo systemctl restart ollama
+systemctl daemon-reload
+systemctl enable ollama
+systemctl restart ollama
 
 # Wait for Ollama to be ready
 info "Waiting for Ollama to start..."
@@ -297,7 +297,7 @@ echo -e "${YELLOW}  Notes:${NC}"
 echo "  - NemoClaw is alpha software — expect rough edges"
 echo "  - Ollama is bound to 0.0.0.0 (Docker access) — on public WiFi"
 echo "    this exposes port 11434. Add a firewall rule if needed:"
-echo "    ${CYAN}sudo ufw allow from 172.16.0.0/12 to any port 11434${NC}"
+echo "    ${CYAN}ufw allow from 172.16.0.0/12 to any port 11434${NC}"
 echo "  - Gateway does not survive reboots — run 'nemoclaw onboard'"
 echo "    again after restarting the RunPod instance"
 echo ""
